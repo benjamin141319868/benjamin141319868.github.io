@@ -1,0 +1,26 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+/* 這是最外層的容器：啟動 Flexbox 排版 */
+.container {
+    display: flex; 
+    gap: 10px;     
+    padding: 20px;
+    background-color: #f0f0f0;
+}
+
+/* 這是裡面的三個小區塊 */
+.box {
+    flex: 1; /* 教授要求的：用掉剩餘的空間 */
+    padding: 50px 20px;
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+}
+
+/* 幫三個區塊加上不同的顏色，方便你看出排版效果 */
+.box1 { background-color: #ff7675; }
+.box2 { background-color: #74b9ff; }
+.box3 { background-color: #55efc4; }
