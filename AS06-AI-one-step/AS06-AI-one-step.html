@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>五頁混合式滾動網頁範本 — 投影片防誤觸 × 第3頁 300vh 平滑滾動</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --accent-indigo: #6366f1;
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      color: #f8fafc;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+    #viewport {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #world-track {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      will-change: transform;
+      transform: translate3d(0, 0, 0);
+    }
+    .page-slide {
+      width: 100%;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+    .page-long-smooth {
+      width: 100%;
+      height: 300vh;
+      position: relative;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.55);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.45);
+      box-shadow: 0 12px 32px -8px rgba(99, 102, 241, 0.22);
+    }
+    .nav-dot {
+      transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .code-Selectable {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.45; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.06); }
+    }
+    .ambient-orb {
+      animation: pulseGlow 7s ease-in-out infinite;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- 頂部固定導覽列與即時滾動狀態 HUD -->
+  <header class="fixed top-0 left-0 right-0 z-40 px-4 sm:px-8 py-3 flex items-center justify-between glass-panel border-b border-slate-800/80">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center font-black text-slate-950 shadow-lg shadow-indigo-500/20">
+        5P
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm sm:text-base tracking-tight text-white">HybridScroll 混合滾動架構</span>
+          <span id="hud-mode-badge" class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+            投影片吸附模式
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 hidden sm:block">P1, P2, P4, P5 防誤觸投影片切換 · P3 300vh 慣性平滑滾動</p>
+      </div>
+    </div>
+
+    <!-- 中間：5 頁快速切換器 -->
+    <nav class="hidden md:flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800" aria-label="頁面切換">
+      <button type="button" data-goto="0" class="top-nav-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-indigo-600 text-white">
+        01 首頁總覽
+      </button>
+      <button type="button" data-goto="1" class="top-nav-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white">
+        02 防誤觸機制
+      </button>
+      <button type="button" data-goto="2" class="top-nav-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1">
+        <span>03 平滑長頁</span>
+        <span class="text-[10px] px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded">300vh</span>
+      </button>
+      <button type="button" data-goto="3" class="top-nav-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white">
+        04 靈敏度實驗室
+      </button>
+      <button type="button" data-goto="4" class="top-nav-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white">
+        05 架構總結
+      </button>
+    </nav>
+
+    <!-- 右側：阻尼蓄力條與程式碼按鈕 -->
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex flex-col items-end w-32">
+        <div class="flex justify-between w-full text-[10px] text-slate-400 mb-1">
+          <span id="hud-charge-label">滾輪防誤觸蓄力</span>
+          <span id="hud-charge-pct" class="font-mono text-indigo-300">0%</span>
+        </div>
+        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div id="hud-charge-bar" class="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all duration-75" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <button type="button" id="btn-open-code" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+        <span>檢視範本碼</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 右側懸浮頁面指示點 + 第3頁 300vh 進度軌 -->
+  <aside class="fixed right-4 sm:right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-2.5 glass-panel px-2.5 py-4 rounded-2xl">
+    <button type="button" data-goto="0" class="side-dot group relative flex items-center justify-center w-6 h-6" title="第 1 頁：首頁總覽">
+      <span class="dot-inner w-2.5 h-2.5 rounded-full bg-indigo-400 ring-4 ring-indigo-500/30 transition-all"></span>
+      <span class=" side-tooltip pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute right-9 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px] whitespace-nowrap text-slate-200">
+        P1 · 100vh 投影片
+      </span>
+    </button>
+
+    <button type="button" data-goto="1" class="side-dot group relative flex items-center justify-center w-6 h-6" title="第 2 頁：防誤觸機制">
+      <span class="dot-inner w-2 h-2 rounded-full bg-slate-600 transition-all"></span>
+      <span class="side-tooltip pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute right-9 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px] whitespace-nowrap text-slate-200">
+        P2 · 100vh 投影片
+      </span>
+    </button>
+
+    <!-- 第 3 頁專屬長條形 300vh 進度指示器 -->
+    <div class="relative flex flex-col items-center my-1">
+      <button type="button" data-goto="2" class="side-dot group relative flex items-center justify-center w-6" title="第 3 頁：300vh 平滑滾動區">
+        <div class="w-2.5 h-16 rounded-full bg-slate-800 border border-slate-700 overflow-hidden relative">
+          <div id="side-p3-fill" class="w-full bg-gradient-to-b from-emerald-400 to-cyan-400 transition-all duration-75" style="height: 0%"></div>
+        </div>
+        <span class="side-tooltip pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute right-9 px-2.5 py-1 rounded-lg bg-slate-900 border border-emerald-500/40 text-[11px] whitespace-nowrap text-emerald-300">
+          P3 · 300vh 平滑滾動 (<span id="side-p3-pct">0%</span>)
+        </span>
+      </button>
+    </div>
+
+    <button type="button" data-goto="3" class="side-dot group relative flex items-center justify-center w-6 h-6" title="第 4 頁：靈敏度實驗室">
+      <span class="dot-inner w-2 h-2 rounded-full bg-slate-600 transition-all"></span>
+      <span class="side-tooltip pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute right-9 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px] whitespace-nowrap text-slate-200">
+        P4 · 100vh 投影片
+      </span>
+    </button>
+
+    <button type="button" data-goto="4" class="side-dot group relative flex items-center justify-center w-6 h-6" title="第 5 頁：架構總結">
+      <span class="dot-inner w-2 h-2 rounded-full bg-slate-600 transition-all"></span>
+      <span class="side-tooltip pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute right-9 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px] whitespace-nowrap text-slate-200">
+        P5 · 100vh 投影片
+      </span>
+    </button>
+  </aside>
+
+  <!-- 底部浮動控制列 -->
+  <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-4 glass-panel px-4 py-2 rounded-2xl shadow-2xl">
+    <button type="button" id="btn-prev-step" class="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-xs font-medium text-slate-200 transition flex items-center gap-1 disabled:opacity-40">
+      <span>↑ 上一段</span>
+    </button>
+    <div class="text-xs text-slate-300 font-medium px-2 flex items-center gap-2">
+      <span id="footer-status-text">第 1 / 5 頁 (100vh 投影片)</span>
+      <span class="text-slate-600">|</span>
+      <span class="text-[11px] text-slate-400 hidden sm:inline">滾輪閾值：<strong id="footer-threshold-val" class="text-indigo-300">140px</strong></span>
+    </div>
+    <button type="button" id="btn-next-step" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition flex items-center gap-1">
+      <span>下一段 ↓</span>
+    </button>
+  </div>
+
+  <!-- 主視窗與世界軌道 (總高度 700vh：P1 100vh + P2 100vh + P3 300vh + P4 100vh + P5 100vh) -->
+  <main id="viewport">
+    <div id="world-track">
+
+      <!-- ==================== PAGE 1: 100vh 投影片模式 ==================== -->
+      <section id="page-1" class="page-slide flex items-center justify-center px-6 sm:px-12 pt-14 pb-16 relative bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+        <div class="ambient-orb absolute -top-24 -left-24 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl"></div>
+        <div class="ambient-orb absolute bottom-10 right-10 w-80 h-80 rounded-full bg-cyan-500/15 blur-3xl"></div>
+
+        <div class="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10">
+          <div class="lg:col-span-7 space-y-5">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-semibold">
+              <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+              <span>PAGE 01 / 05 · 100vh 投影片切換模式</span>
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+              五頁式混合滾動架構<br />
+              <span class="bg-gradient-to-r from-indigo-400 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
+                防誤觸投影片 × 300vh 平滑長頁
+              </span>
+            </h1>
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed max-w-xl">
+              這份互動網頁範本專為您的需求打造：<strong>第 1、2、4、5 頁</strong>採用具備「滾輪蓄力閾值 + 冷卻鎖定」的投影片式滑動，避免觸控板或滑鼠滾輪稍微碰到就跳頁；<strong>第 3 頁</strong>則自動切換為 <strong>300vh 慣性平滑滾動（Lerp Smooth Scroll）</strong>。
+            </p>
+
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+              <button type="button" data-goto="2" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-semibold text-sm shadow-lg shadow-indigo-600/25 transition">
+                直接體驗第 3 頁 (300vh 平滑滾動) →
+              </button>
+              <button type="button" data-goto="3" class="px-4 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-sm transition">
+                調整滑動敏感度參數
+              </button>
+            </div>
+          </div>
+
+          <!-- 右側：5頁結構視覺化地圖 -->
+          <div class="lg:col-span-5 glass-card rounded-2xl p-5 space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400">全站 700vh 座標配置圖</span>
+              <span class="text-xs font-mono text-cyan-300">5 Pages Total</span>
+            </div>
+
+            <div class="space-y-2 text-xs">
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-indigo-500/15 border border-indigo-500/30">
+                <span class="font-semibold text-white">第 1 頁 · 首頁總覽</span>
+                <span class="font-mono text-indigo-300">100vh · 投影片吸附</span>
+              </div>
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                <span class="font-semibold text-slate-200">第 2 頁 · 防誤觸設計解析</span>
+                <span class="font-mono text-slate-400">100vh · 投影片吸附</span>
+              </div>
+              <div class="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-emerald-300">第 3 頁 · 深度故事長頁</span>
+                  <span class="font-mono font-bold text-emerald-300">300vh · 平滑滾動</span>
+                </div>
+                <p class="text-[11px] text-slate-300">內含 3 個 100vh 連續視覺段落，支援雙向無縫銜接與邊界緩衝防暴衝。</p>
+              </div>
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                <span class="font-semibold text-slate-200">第 4 頁 · 靈敏度即時調校</span>
+                <span class="font-mono text-slate-400">100vh · 投影片吸附</span>
+              </div>
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                <span class="font-semibold text-slate-200">第 5 頁 · 總結與匯出範本</span>
+                <span class="font-mono text-slate-400">100vh · 投影片吸附</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== PAGE 2: 100vh 投影片模式 ==================== -->
+      <section id="page-2" class="page-slide flex items-center justify-center px-6 sm:px-12 pt-14 pb-16 relative bg-gradient-to-b from-slate-950 via-indigo-950/30 to-slate-950">
+        <div class="max-w-5xl w-full space-y-6 z-10">
+          <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-semibold mb-2">
+                <span>PAGE 02 / 05 · 100vh 投影片切換模式</span>
+              </div>
+              <h2 class="text-2xl sm:text-4xl font-extrabold text-white">為什麼投影片滑動「不會太敏感」？</h2>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-400 max-w-md">
+              傳統全螢幕投影片常因滾輪 `deltaY > 0` 就立刻換頁，導致觸控板慣性連跳好幾頁。我們採用三道防護機制：
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="glass-card rounded-2xl p-5 space-y-3">
+              <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 font-bold">
+                01
+              </div>
+              <h3 class="text-lg font-bold text-white">滾輪能量蓄力閾值</h3>
+              <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                微小滾動量會先累積在 <code class="text-indigo-300">wheelAccumulator</code>，必須超過設定閾值（預設 <strong>140px</strong>）才會觸發換頁；若停頓超過 240ms 則自動歸零，徹底消除誤觸。
+              </p>
+              <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+                <span class="text-slate-400">目前設定閾值</span>
+                <span id="p2-stat-threshold" class="font-mono font-bold text-indigo-300">140 px</span>
+              </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 space-y-3">
+              <div class="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-bold">
+                02
+              </div>
+              <h3 class="text-lg font-bold text-white">換頁冷卻鎖定與慣性吸收</h3>
+              <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                每次觸發投影片切換後，系統立即啟動 <strong>950ms 冷卻鎖定</strong>，並自動過濾觸控板餘波（Inertia Decay），確保單次滑動永遠只前進或後退一頁。
+              </p>
+              <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+                <span class="text-slate-400">換頁冷卻時間</span>
+                <span id="p2-stat-cooldown" class="font-mono font-bold text-cyan-300">950 ms</span>
+              </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 space-y-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 font-bold">
+                03
+              </div>
+              <h3 class="text-lg font-bold text-white">第 3 頁雙向邊界緩衝閥</h3>
+              <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                當您進入第 3 頁（300vh）平滑滾動到底部或頂部時，會先停靠在邊界並要求額外的 <strong>邊界蓄力（180px）</strong> 才切換至第 2 或第 4 頁，不會因快速滾動而衝過頭。
+              </p>
+              <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+                <span class="text-slate-400">邊界緩衝閾值</span>
+                <span id="p2-stat-boundary" class="font-mono font-bold text-emerald-300">180 px</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 即時互動測試小工具 -->
+          <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="text-sm font-bold text-white flex items-center gap-2">
+                <span>快速手感切換預覽：</span>
+                <span id="p2-preset-badge" class="text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">標準穩重手感 (推薦)</span>
+              </div>
+              <p class="text-xs text-slate-400">您可以立即點擊右側按鈕體驗不同防誤觸阻尼，再往下滑動進入第 3 頁 300vh 平滑滾動區。</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button type="button" data-preset="light" class="preset-btn px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 border border-slate-700 transition">
+                輕快 (90px)
+              </button>
+              <button type="button" data-preset="balanced" class="preset-btn px-3 py-1.5 rounded-xl bg-indigo-600 text-xs font-semibold text-white border border-indigo-500 transition">
+                穩重防誤觸 (140px)
+              </button>
+              <button type="button" data-preset="heavy" class="preset-btn px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 border border-slate-700 transition">
+                高阻尼防滑 (220px)
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== PAGE 3: 300vh 平滑滾動模式 ==================== -->
+      <section id="page-3" class="page-long-smooth relative bg-gradient-to-b from-slate-950 via-emerald-950/25 to-slate-950">
+        <!-- 背景網格裝飾 -->
+        <div class="absolute inset-0 opacity-15 pointer-events-none" style="background-image: radial-gradient(#10b981 1px, transparent 1px); background-size: 32px 32px;"></div>
+
+        <!-- 左側浮動進度膠囊 (隨第 3 頁滾動進度即時更新) -->
+        <div class="max-w-6xl mx-auto px-6 sm:px-12 h-full flex flex-col justify-between relative z-10">
+
+          <!-- Stage 3.1 (0vh - 100vh of Page 3) -->
+          <div class="h-[100vh] flex items-center pt-14 pb-12">
+            <div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div class="lg:col-span-7 space-y-4">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span>PAGE 03 / 05 · 300vh 平滑滾動區 (第一段 0% - 33%)</span>
+                </div>
+                <h2 class="text-3xl sm:text-5xl font-black text-white leading-tight">
+                  進入 300vh 自由平滑滾動<br />
+                  <span class="text-emerald-400">絲滑慣性插值 (Lerp Smoothing)</span>
+                </h2>
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                  現在您位於第 3 頁！系統已自動解除「單頁投影片跳躍」，改為連續的 <strong>平滑阻尼滾動</strong>。請試著持續滾動滑鼠滾輪或觸控板，感受畫面以 <code class="text-emerald-300">requestAnimationFrame</code> 進行流暢插值的細膩移動。
+                </p>
+                <div class="flex flex-wrap gap-3 pt-1">
+                  <button type="button" data-p3-sub="0.5" class="px-4 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-200 text-xs font-semibold transition">
+                    平滑滾動至第 3 頁中段 (150vh) ↓
+                  </button>
+                  <button type="button" data-p3-sub="1" class="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium transition">
+                    平滑滾動至第 3 頁底部 (300vh) ↓
+                  </button>
+                </div>
+              </div>
+
+              <div class="lg:col-span-5 glass-card rounded-2xl p-5 border-emerald-500/30 space-y-4">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-emerald-300 uppercase tracking-wider">第 3 頁即時滾動遙測</span>
+                  <span id="p3-card1-pct" class="font-mono text-lg font-black text-white">0%</span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                  <div id="p3-card1-bar" class="h-full bg-gradient-to-r from-emerald-400 to-cyan-400" style="width: 0%"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                  <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <div class="text-slate-400">區段總高度</div>
+                    <div class="font-mono font-bold text-white text-sm mt-0.5">300 vh</div>
+                  </div>
+                  <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <div class="text-slate-400">可滾動行程</div>
+                    <div id="p3-scrollable-readout" class="font-mono font-bold text-emerald-300 text-sm mt-0.5">0 / 200 vh</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 3.2 (100vh - 200vh of Page 3) -->
+          <div class="h-[100vh] flex items-center py-12">
+            <div class="w-full space-y-6">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-semibold">
+                <span>PAGE 03 / 05 · 300vh 平滑滾動區 (第二段 33% - 66%)</span>
+              </div>
+              <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <h3 class="text-2xl sm:text-4xl font-extrabold text-white">
+                  長篇敘事、產品拆解或時間軸的最佳舞台
+                </h3>
+                <span class="text-xs font-mono text-cyan-300">Scroll Position: ~150vh / 300vh</span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="glass-card rounded-2xl p-5 space-y-2.5 border-l-4 border-l-emerald-400">
+                  <div class="text-xs font-mono text-emerald-300">STEP 01 · 進入長頁</div>
+                  <h4 class="text-base font-bold text-white">由第 2 頁向下滑入</h4>
+                  <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    從第 2 頁觸發換頁後，鏡頭精準停靠在第 3 頁頂端（0vh 處），並鎖定 600ms 防止過渡慣性直接把長頁往下捲走。
+                  </p>
+                </div>
+                <div class="glass-card rounded-2xl p-5 space-y-2.5 border-l-4 border-l-cyan-400">
+                  <div class="text-xs font-mono text-cyan-300">STEP 02 · 自由探索</div>
+                  <h4 class="text-base font-bold text-white">300vh 連續視覺空間</h4>
+                  <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    在 200vh 的有效滾動行程內，使用者可任意微調停留位置，適合放置產品規格對比、作品集長圖或深度圖文。
+                  </p>
+                </div>
+                <div class="glass-card rounded-2xl p-5 space-y-2.5 border-l-4 border-l-indigo-400">
+                  <div class="text-xs font-mono text-indigo-300">STEP 03 · 雙向逆行</div>
+                  <h4 class="text-base font-bold text-white">由第 4 頁往回滑入</h4>
+                  <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    若從第 4 頁向上滑回第 3 頁，鏡頭會智慧定位於第 3 頁最底部（100% 處），讓向上滾動也能自然倒敘瀏覽。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 3.3 (200vh - 300vh of Page 3) -->
+          <div class="h-[100vh] flex items-center pt-12 pb-20">
+            <div class="w-full glass-card rounded-3xl p-6 sm:p-10 border border-emerald-500/40 bg-gradient-to-br from-slate-900/90 via-emerald-950/30 to-slate-900/90 space-y-6">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
+                  <span>PAGE 03 / 05 · 300vh 平滑滾動區 (第三段 66% - 100% 底部邊界)</span>
+                </div>
+                <span class="text-xs font-mono text-emerald-300">Bottom Boundary Guard Active</span>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                <div class="lg:col-span-8 space-y-3">
+                  <h3 class="text-2xl sm:text-4xl font-black text-white">
+                    已抵達第 3 頁 (300vh) 底部！
+                  </h3>
+                  <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                    當您滾動到這裡時，系統會先平穩停靠在 300vh 的底部邊界。繼續向下滑動超過邊界緩衝閾值，就會自動切回<strong>投影片模式</strong>並滑入<strong>第 4 頁</strong>。
+                  </p>
+                </div>
+                <div class="lg:col-span-4 flex flex-col gap-2.5">
+                  <button type="button" data-p3-sub="0" class="w-full px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition">
+                    ↑ 平滑捲回第 3 頁頂端 (0%)
+                  </button>
+                  <button type="button" data-goto="3" class="w-full px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition">
+                    ↓ 切換至第 4 頁 (靈敏度調校室)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==================== PAGE 4: 100vh 投影片模式 (靈敏度調校實驗室) ==================== -->
+      <section id="page-4" class="page-slide flex items-center justify-center px-6 sm:px-12 pt-14 pb-16 relative bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+        <div class="max-w-5xl w-full space-y-6 z-10">
+          <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div>
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-semibold mb-2">
+                <span>PAGE 04 / 05 · 100vh 投影片切換模式</span>
+              </div>
+              <h2 class="text-2xl sm:text-4xl font-extrabold text-white">滾動手感與防誤觸即時調校室</h2>
+            </div>
+            <button type="button" id="btn-reset-params" class="self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-300 transition">
+              重設為推薦預設值
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- 控制項 1：投影片觸發閾值 -->
+            <div class="glass-card rounded-2xl p-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <label for="input-threshold" class="text-sm font-bold text-white">1. 投影片觸發閾值 (防敏感度)</label>
+                <span id="val-threshold" class="font-mono text-sm font-bold text-indigo-300">140 px</span>
+              </div>
+              <p class="text-xs text-slate-400">數值越高，需要更明確的滾輪幅度才會觸發投影片換頁（建議 120px – 200px）。</p>
+              <input id="input-threshold" type="range" min="60" max="280" step="10" value="140" class="w-full accent-indigo-500 cursor-pointer" />
+            </div>
+
+            <!-- 控制項 2：投影片冷卻鎖定時間 -->
+            <div class="glass-card rounded-2xl p-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <label for="input-cooldown" class="text-sm font-bold text-white">2. 投影片換頁冷卻鎖定時間</label>
+                <span id="val-cooldown" class="font-mono text-sm font-bold text-cyan-300">950 ms</span>
+              </div>
+              <p class="text-xs text-slate-400">換頁期間鎖定後續滾輪輸入的時間，防止觸控板長慣性一次跳兩頁。</p>
+              <input id="input-cooldown" type="range" min="500" max="1500" step="50" value="950" class="w-full accent-cyan-400 cursor-pointer" />
+            </div>
+
+            <!-- 控制項 3：第 3 頁平滑滾動阻尼係數 -->
+            <div class="glass-card rounded-2xl p-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <label for="input-lerp" class="text-sm font-bold text-white">3. 第 3 頁平滑滾動柔順度 (Lerp)</label>
+                <span id="val-lerp" class="font-mono text-sm font-bold text-emerald-300">0.10</span>
+              </div>
+              <p class="text-xs text-slate-400">數值越小，第 3 頁的平滑滑動慣性越綿密柔和；數值越大則跟手度越高。</p>
+              <input id="input-lerp" type="range" min="0.05" max="0.25" step="0.01" value="0.10" class="w-full accent-emerald-400 cursor-pointer" />
+            </div>
+
+            <!-- 控制項 4：第 3 頁離開邊界緩衝閾值 -->
+            <div class="glass-card rounded-2xl p-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <label for="input-boundary" class="text-sm font-bold text-white">4. 第 3 頁頂底邊界緩衝閾值</label>
+                <span id="val-boundary" class="font-mono text-sm font-bold text-amber-300">180 px</span>
+              </div>
+              <p class="text-xs text-slate-400">在第 3 頁捲到底部或頂部時，需再累積多少滾動量才跳出至第 4 頁或第 2 頁。</p>
+              <input id="input-boundary" type="range" min="80" max="320" step="20" value="180" class="w-full accent-amber-400 cursor-pointer" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== PAGE 5: 100vh 投影片模式 (總結與複製架構) ==================== -->
+      <section id="page-5" class="page-slide flex items-center justify-center px-6 sm:px-12 pt-14 pb-16 relative bg-gradient-to-b from-slate-950 via-indigo-950/40 to-slate-950">
+        <div class="max-w-4xl w-full text-center space-y-6 z-10">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+            <span>PAGE 05 / 05 · 100vh 投影片切換模式</span>
+          </div>
+          <h2 class="text-3xl sm:text-5xl font-black text-white">
+            準備好套用至您的專案了嗎？
+          </h2>
+          <p class="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
+            本頁為第 5 頁（100vh 投影片）。您可以隨時點擊下方按鈕開啟乾淨的架構範本程式碼，直接替換各頁內容區塊即可上線使用，或一鍵回到第 1 頁重新體驗。
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left max-w-3xl mx-auto pt-2">
+            <div class="glass-card rounded-2xl p-4">
+              <div class="text-xs font-mono text-indigo-300">P1, P2, P4, P5</div>
+              <div class="text-base font-bold text-white mt-1">100vh 投影片式滑動</div>
+              <p class="text-xs text-slate-400 mt-1">內建滾輪累積閾值與冷卻鎖，滑動沉穩不亂跳。</p>
+            </div>
+            <div class="glass-card rounded-2xl p-4 border-emerald-500/30">
+              <div class="text-xs font-mono text-emerald-300">PAGE 3 SPECIAL</div>
+              <div class="text-base font-bold text-white mt-1">300vh 平滑慣性滾動</div>
+              <p class="text-xs text-slate-400 mt-1">支援 Lerp 平滑插值與頂底雙向無縫接軌。</p>
+            </div>
+            <div class="glass-card rounded-2xl p-4">
+              <div class="text-xs font-mono text-cyan-300">CROSS-DEVICE</div>
+              <div class="text-base font-bold text-white mt-1">支援滑鼠、觸控與鍵盤</div>
+              <p class="text-xs text-slate-400 mt-1">完整整合滾輪、手機上下滑動手勢與方向鍵導覽。</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-center gap-3 pt-4">
+            <button type="button" id="btn-open-code-p5" class="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition">
+              開啟並複製精簡版範本程式碼
+            </button>
+            <button type="button" data-goto="0" class="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-sm transition">
+              ↑ 回到第 1 頁頂端
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- 範本程式碼檢視與複製 Modal -->
+  <div id="code-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+    <div class="glass-panel rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col border border-slate-700 shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white">五頁混合式滾動核心架構範本 (可直接使用)</h3>
+          <p class="text-xs text-slate-400">已將您目前調校的靈敏度與平滑參數同步寫入下方程式碼</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-copy-code" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition">
+            複製程式碼
+          </button>
+          <button type="button" id="btn-close-code" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 transition">
+            關閉
+          </button>
+        </div>
+      </div>
+      <div class="p-4 overflow-y-auto flex-1 bg-slate-950/90">
+        <pre id="code-template-content" class="code-Selectable text-xs font-mono text-slate-200 whitespace-pre-wrap leading-relaxed"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // 滾動控制參數 (可在第 4 頁即時調整)
+      const config = {
+        wheelThreshold: 140,    // 投影片模式觸發所需累積 delta (越高越不敏感)
+        cooldownMs: 950,        // 投影片換頁冷卻鎖定時間 (ms)
+        lerpFactor: 0.10,       // 第 3 頁平滑滾動插值係數
+        boundaryThreshold: 180  // 第 3 頁頂底邊界跳出所需累積 delta
+      };
+
+      // 頁面高度結構 (以 vh 倍數表示：P1=1, P2=1, P3=3, P4=1, P5=1，共 700vh)
+      // 對應頁面起始 offset (以視窗高度 H 的倍數計算)：
+      // P1: 0*H, P2: 1*H, P3: 2*H ~ 4*H (因為視窗高 1*H，滾到 4*H 時見到底部 5*H), P4: 5*H, P5: 6*H
+      const state = {
+        currentPage: 0,       // 0, 1, 2 (300vh), 3, 4
+        targetVh: 0,          // 目標位置 (單位: vh, 範圍 0 ~ 600)
+        currentVh: 0,         // 當前平滑位置 (單位: vh, 範圍 0 ~ 600)
+        wheelAccum: 0,        // 投影片模式滾輪累積器
+        boundaryAccum: 0,     // 第 3 頁邊界緩衝累積器
+        lockedUntil: 0,       // 冷卻鎖定時間戳
+        decayTimer: null,
+        touchStartY: 0,
+        touchLastY: 0
+      };
+
+      const worldTrack = document.getElementById('world-track');
+      const hudModeBadge = document.getElementById('hud-mode-badge');
+      const hudChargeLabel = document.getElementById('hud-charge-label');
+      const hudChargePct = document.getElementById('hud-charge-pct');
+      const hudChargeBar = document.getElementById('hud-charge-bar');
+      const sideP3Fill = document.getElementById('side-p3-fill');
+      const sideP3Pct = document.getElementById('side-p3-pct');
+      const p3Card1Pct = document.getElementById('p3-card1-pct');
+      const p3Card1Bar = document.getElementById('p3-card1-bar');
+      const p3ScrollableReadout = document.getElementById('p3-scrollable-readout');
+      const footerStatusText = document.getElementById('footer-status-text');
+      const footerThresholdVal = document.getElementById('footer-threshold-val');
+
+      const topNavBtns = document.querySelectorAll('.top-nav-btn');
+      const sideDots = document.querySelectorAll('.side-dot');
+
+      // 取得某頁面起始的 vh 座標
+      function getPageStartVh(pageIndex, fromBelow) {
+        if (pageIndex === 0) return 0;
+        if (pageIndex === 1) return 100;
+        if (pageIndex === 2) return fromBelow ? 400 : 200; // 第3頁頂部為200vh，底部對齊視窗為400vh
+        if (pageIndex === 3) return 500;
+        return 600;
+      }
+
+      // 跳轉至指定頁
+      function goToPage(pageIndex, fromBelow) {
+        const clamped = Math.max(0, Math.min(4, pageIndex));
+        const now = performance.now();
+        state.currentPage = clamped;
+        state.targetVh = getPageStartVh(clamped, Boolean(fromBelow));
+        state.wheelAccum = 0;
+        state.boundaryAccum = 0;
+        state.lockedUntil = now + (clamped === 2 ? 620 : config.cooldownMs);
+        updateChargeUI(0);
+        updateNavigationUI();
+      }
+
+      // 在第 3 頁內部跳轉 (ratio: 0 ~ 1)
+      function scrollInsidePage3(ratio) {
+        state.currentPage = 2;
+        state.targetVh = 200 + Math.max(0, Math.min(1, ratio)) * 200;
+        state.wheelAccum = 0;
+        state.boundaryAccum = 0;
+        updateNavigationUI();
+      }
+
+      // 更新導覽列與指示器 UI
+      function updateNavigationUI() {
+        topNavBtns.forEach(function (btn, idx) {
+          if (idx === state.currentPage) {
+            btn.className = 'top-nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white flex items-center gap-1';
+          } else {
+            btn.className = 'top-nav-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-white flex items-center gap-1';
+          }
+        });
+
+        sideDots.forEach(function (dot, idx) {
+          const inner = dot.querySelector('.dot-inner');
+          if (!inner) return;
+          if (idx === state.currentPage) {
+            inner.className = 'dot-inner w-2.5 h-2.5 rounded-full bg-indigo-400 ring-4 ring-indigo-500/30 transition-all';
+          } else {
+            inner.className = 'dot-inner w-2 h-2 rounded-full bg-slate-600 transition-all';
+          }
+        });
+
+        if (state.currentPage === 2) {
+          hudModeBadge.textContent = '300vh 平滑滾動模式';
+          hudModeBadge.className = 'px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+          hudChargeLabel.textContent = '邊界跳出緩衝';
+        } else {
+          hudModeBadge.textContent = '投影片吸附模式';
+          hudModeBadge.className = 'px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+          hudChargeLabel.textContent = '滾輪防誤觸蓄力';
+        }
+
+        const pageLabels = [
+          '第 1 / 5 頁 (100vh 投影片)',
+          '第 2 / 5 頁 (100vh 投影片)',
+          '第 3 / 5 頁 (300vh 平滑滾動)',
+          '第 4 / 5 頁 (100vh 投影片)',
+          '第 5 / 5 頁 (100vh 投影片)'
+        ];
+        footerStatusText.textContent = pageLabels[state.currentPage];
+
+        const prevBtn = document.getElementById('btn-prev-step');
+        const nextBtn = document.getElementById('btn-next-step');
+        if (prevBtn) prevBtn.disabled = (state.currentPage === 0);
+        if (nextBtn) nextBtn.disabled = (state.currentPage === 4);
+      }
+
+      function updateChargeUI(pct) {
+        const clamped = Math.min(100, Math.max(0, Math.round(pct)));
+        hudChargePct.textContent = clamped + '%';
+        hudChargeBar.style.width = clamped + '%';
+      }
+
+      // 處理滾輪輸入 (整合投影片防誤觸 + 第3頁 300vh 平滑滾動)
+      function handleScrollDelta(deltaY) {
+        const now = performance.now();
+
+        // 若處於換頁冷卻鎖定期間，忽略殘餘滾輪慣性
+        if (now < state.lockedUntil) {
+          state.wheelAccum = 0;
+          state.boundaryAccum = 0;
+          updateChargeUI(0);
+          return;
+        }
+
+        // 重置自動衰減計時器
+        if (state.decayTimer) clearTimeout(state.decayTimer);
+        state.decayTimer = setTimeout(function () {
+          state.wheelAccum = 0;
+          state.boundaryAccum = 0;
+          updateChargeUI(0);
+        }, 240);
+
+        // 情況 A：當前位於第 3 頁 (300vh 平滑滾動區，有效範圍 200vh ~ 400vh)
+        if (state.currentPage === 2) {
+          const vhDelta = (deltaY / window.innerHeight) * 100;
+          const nextVh = state.targetVh + vhDelta;
+
+          // 檢查是否撞擊第 3 頁頂部邊界 (200vh) 且持續往上滾
+          if (nextVh < 200) {
+            state.targetVh = 200;
+            // 若視覺位置已經接近頂部，才開始累積邊界跳出能量
+            if (Math.abs(state.currentVh - 200) < 6) {
+              state.boundaryAccum += Math.abs(deltaY);
+              updateChargeUI((state.boundaryAccum / config.boundaryThreshold) * 100);
+              if (state.boundaryAccum >= config.boundaryThreshold) {
+                goToPage(1, false);
+              }
+            }
+            return;
+          }
+
+          // 檢查是否撞擊第 3 頁底部邊界 (400vh) 且持續往下滾
+          if (nextVh > 400) {
+            state.targetVh = 400;
+            if (Math.abs(state.currentVh - 400) < 6) {
+              state.boundaryAccum += Math.abs(deltaY);
+              updateChargeUI((state.boundaryAccum / config.boundaryThreshold) * 100);
+              if (state.boundaryAccum >= config.boundaryThreshold) {
+                goToPage(3, false);
+              }
+            }
+            return;
+          }
+
+          // 在 200vh ~ 400vh 之間自由平滑滾動
+          state.boundaryAccum = 0;
+          updateChargeUI(0);
+          state.targetVh = nextVh;
+          return;
+        }
+
+        // 情況 B：當前位於第 1, 2, 4, 5 頁 (投影片防誤觸模式)
+        // 若方向反轉則重置累積值
+        if ((state.wheelAccum > 0 && deltaY < 0) || (state.wheelAccum < 0 && deltaY > 0)) {
+          state.wheelAccum = 0;
+        }
+
+        // 限制單次極端脈衝，避免滑鼠滾輪單格暴衝
+        const clampedStep = Math.max(-75, Math.min(75, deltaY));
+        state.wheelAccum += clampedStep;
+
+        const chargeRatio = (Math.abs(state.wheelAccum) / config.wheelThreshold) * 100;
+        updateChargeUI(chargeRatio);
+
+        if (state.wheelAccum >= config.wheelThreshold) {
+          if (state.currentPage < 4) {
+            goToPage(state.currentPage + 1, false);
+          } else {
+            state.wheelAccum = 0;
+            updateChargeUI(0);
+          }
+        } else if (state.wheelAccum <= -config.wheelThreshold) {
+          if (state.currentPage > 0) {
+            const targetIdx = state.currentPage - 1;
+            // 若從第 4 頁往上進入第 3 頁，落點設為第 3 頁底部 (400vh)
+            goToPage(targetIdx, targetIdx === 2);
+          } else {
+            state.wheelAccum = 0;
+            updateChargeUI(0);
+          }
+        }
+      }
+
+      // 綁定滾輪事件
+      window.addEventListener('wheel', function (e) {
+        // 若程式碼 Modal 開啟中則允許 Modal 內部自然滾動
+        const modal = document.getElementById('code-modal');
+        if (modal && !modal.classList.contains('hidden')) return;
+        e.preventDefault();
+        handleScrollDelta(e.deltaY);
+      }, { passive: false });
+
+      // 綁定觸控滑動事件 (手機/平板)
+      window.addEventListener('touchstart', function (e) {
+        const modal = document.getElementById('code-modal');
+        if (modal && !modal.classList.contains('hidden')) return;
+        if (e.touches.length > 0) {
+          state.touchStartY = e.touches[0].clientY;
+          state.touchLastY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchmove', function (e) {
+        const modal = document.getElementById('code-modal');
+        if (modal && !modal.classList.contains('hidden')) return;
+        if (e.touches.length > 0) {
+          const currentY = e.touches[0].clientY;
+          const dy = (state.touchLastY - currentY) * 1.6;
+          state.touchLastY = currentY;
+          handleScrollDelta(dy);
+        }
+      }, { passive: true });
+
+      // 綁定鍵盤導覽
+      window.addEventListener('keydown', function (e) {
+        const modal = document.getElementById('code-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+          if (e.key === 'Escape') closeCodeModal();
+          return;
+        }
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+          e.preventDefault();
+          if (state.currentPage === 2 && state.targetVh < 395) {
+            state.targetVh = Math.min(400, state.targetVh + 50);
+          } else if (state.currentPage < 4) {
+            goToPage(state.currentPage + 1, false);
+          }
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+          e.preventDefault();
+          if (state.currentPage === 2 && state.targetVh > 205) {
+            state.targetVh = Math.max(200, state.targetVh - 50);
+          } else if (state.currentPage > 0) {
+            const prevIdx = state.currentPage - 1;
+            goToPage(prevIdx, prevIdx === 2);
+          }
+        }
+      });
+
+      // 主渲染迴圈：以 Lerp 進行平滑位置插值
+      function renderLoop() {
+        const diff = state.targetVh - state.currentVh;
+        // 在第 3 頁使用自訂平滑係數，在投影片過渡時使用穩定的吸附阻尼
+        const activeLerp = state.currentPage === 2 ? config.lerpFactor : 0.11;
+
+        if (Math.abs(diff) > 0.01) {
+          state.currentVh += diff * activeLerp;
+        } else {
+          state.currentVh = state.targetVh;
+        }
+
+        worldTrack.style.transform = 'translate3d(0, -' + state.currentVh.toFixed(3) + 'vh, 0)';
+
+        // 更新第 3 頁 (200vh ~ 400vh) 的進度條與遙測數值
+        const p3Progress = Math.max(0, Math.min(1, (state.currentVh - 200) / 200));
+        const p3PctText = Math.round(p3Progress * 100) + '%';
+        const p3ScrolledVh = Math.round(p3Progress * 200);
+
+        sideP3Fill.style.height = (p3Progress * 100).toFixed(1) + '%';
+        sideP3Pct.textContent = p3PctText;
+        p3Card1Pct.textContent = p3PctText;
+        p3Card1Bar.style.width = (p3Progress * 100).toFixed(1) + '%';
+        p3ScrollableReadout.textContent = p3ScrolledVh + ' / 200 vh';
+
+        requestAnimationFrame(renderLoop);
+      }
+
+      // 綁定所有 data-goto 按鈕
+      document.querySelectorAll('[data-goto]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const target = parseInt(btn.getAttribute('data-goto'), 10);
+          goToPage(target, false);
+        });
+      });
+
+      // 綁定第 3 頁內部段落快速移動按鈕
+      document.querySelectorAll('[data-p3-sub]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const ratio = parseFloat(btn.getAttribute('data-p3-sub'));
+          scrollInsidePage3(ratio);
+        });
+      });
+
+      // 底部上下一段按鈕
+      document.getElementById('btn-prev-step').addEventListener('click', function () {
+        if (state.currentPage === 2 && state.targetVh > 210) {
+          state.targetVh = Math.max(200, state.targetVh - 100);
+        } else if (state.currentPage > 0) {
+          const prevIdx = state.currentPage - 1;
+          goToPage(prevIdx, prevIdx === 2);
+        }
+      });
+
+      document.getElementById('btn-next-step').addEventListener('click', function () {
+        if (state.currentPage === 2 && state.targetVh < 390) {
+          state.targetVh = Math.min(400, state.targetVh + 100);
+        } else if (state.currentPage < 4) {
+          goToPage(state.currentPage + 1, false);
+        }
+      });
+
+      // 同步參數顯示與滑桿控制
+      const inputThreshold = document.getElementById('input-threshold');
+      const inputCooldown = document.getElementById('input-cooldown');
+      const inputLerp = document.getElementById('input-lerp');
+      const inputBoundary = document.getElementById('input-boundary');
+
+      function syncParamsUI() {
+        inputThreshold.value = config.wheelThreshold;
+        inputCooldown.value = config.cooldownMs;
+        inputLerp.value = config.lerpFactor;
+        inputBoundary.value = config.boundaryThreshold;
+
+        document.getElementById('val-threshold').textContent = config.wheelThreshold + ' px';
+        document.getElementById('val-cooldown').textContent = config.cooldownMs + ' ms';
+        document.getElementById('val-lerp').textContent = config.lerpFactor.toFixed(2);
+        document.getElementById('val-boundary').textContent = config.boundaryThreshold + ' px';
+
+        document.getElementById('p2-stat-threshold').textContent = config.wheelThreshold + ' px';
+        document.getElementById('p2-stat-cooldown').textContent = config.cooldownMs + ' ms';
+        document.getElementById('p2-stat-boundary').textContent = config.boundaryThreshold + ' px';
+        footerThresholdVal.textContent = config.wheelThreshold + 'px';
+      }
+
+      inputThreshold.addEventListener('input', function (e) {
+        config.wheelThreshold = parseInt(e.target.value, 10);
+        syncParamsUI();
+      });
+      inputCooldown.addEventListener('input', function (e) {
+        config.cooldownMs = parseInt(e.target.value, 10);
+        syncParamsUI();
+      });
+      inputLerp.addEventListener('input', function (e) {
+        config.lerpFactor = parseFloat(e.target.value);
+        syncParamsUI();
+      });
+      inputBoundary.addEventListener('input', function (e) {
+        config.boundaryThreshold = parseInt(e.target.value, 10);
+        syncParamsUI();
+      });
+
+      document.getElementById('btn-reset-params').addEventListener('click', function () {
+        config.wheelThreshold = 140;
+        config.cooldownMs = 950;
+        config.lerpFactor = 0.10;
+        config.boundaryThreshold = 180;
+        syncParamsUI();
+      });
+
+      // 第 2 頁快速手感預設按鈕
+      const presetBadge = document.getElementById('p2-preset-badge');
+      document.querySelectorAll('.preset-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const mode = btn.getAttribute('data-preset');
+          if (mode === 'light') {
+            config.wheelThreshold = 90;
+            config.cooldownMs = 750;
+            presetBadge.textContent = '輕快靈敏手感 (90px)';
+          } else if (mode === 'balanced') {
+            config.wheelThreshold = 140;
+            config.cooldownMs = 950;
+            presetBadge.textContent = '標準穩重手感 (推薦)';
+          } else {
+            config.wheelThreshold = 220;
+            config.cooldownMs = 1150;
+            presetBadge.textContent = '高阻尼防誤觸手感 (220px)';
+          }
+          document.querySelectorAll('.preset-btn').forEach(function (b) {
+            b.className = 'preset-btn px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 border border-slate-700 transition';
+          });
+          btn.className = 'preset-btn px-3 py-1.5 rounded-xl bg-indigo-600 text-xs font-semibold text-white border border-indigo-500 transition';
+          syncParamsUI();
+        });
+      });
+
+      // 產生乾淨可複製的五頁範本程式碼
+      function buildCleanTemplateCode() {
+        return [
+          '<!-- 五頁混合式滾動骨架 (P1,P2,P4,P5 100vh 投影片 + P3 300vh 平滑滾動) -->',
+          '<div id="viewport" style="height:100vh;overflow:hidden;position:relative;">',
+          '  <div id="world-track" style="will-change:transform;">',
+          '    <section style="height:100vh;">Page 1 (100vh 投影片)</section>',
+          '    <section style="height:100vh;">Page 2 (100vh 投影片)</section>',
+          '    <section style="height:300vh;">Page 3 (300vh 平滑滾動長頁)</section>',
+          '    <section style="height:100vh;">Page 4 (100vh 投影片)</section>',
+          '    <section style="height:100vh;">Page 5 (100vh 投影片)</section>',
+          '  </div>',
+          '</div>',
+          '',
+          '<script>',
+          'const CONFIG = {',
+          '  wheelThreshold: ' + config.wheelThreshold + ',   // 投影片防誤觸累積閾值(px)',
+          '  cooldownMs: ' + config.cooldownMs + ',       // 投影片換頁冷卻鎖定(ms)',
+          '  lerpFactor: ' + config.lerpFactor.toFixed(2) + ',      // 第3頁平滑滾動柔順係數',
+          '  boundaryThreshold: ' + config.boundaryThreshold + ' // 第3頁頂底邊界緩衝閾值(px)',
+          '};',
+          '',
+          'let currentPage = 0, targetVh = 0, currentVh = 0;',
+          'let wheelAccum = 0, boundaryAccum = 0, lockedUntil = 0;',
+          'const track = document.getElementById("world-track");',
+          '',
+          'function getPageStartVh(idx, fromBelow) {',
+          '  if (idx === 0) return 0;',
+          '  if (idx === 1) return 100;',
+          '  if (idx === 2) return fromBelow ? 400 : 200;',
+          '  if (idx === 3) return 500;',
+          '  return 600;',
+          '}',
+          '',
+          'function goToPage(idx, fromBelow) {',
+          '  currentPage = Math.max(0, Math.min(4, idx));',
+          '  targetVh = getPageStartVh(currentPage, fromBelow);',
+          '  wheelAccum = 0; boundaryAccum = 0;',
+          '  lockedUntil = performance.now() + CONFIG.cooldownMs;',
+          '}',
+          '',
+          'window.addEventListener("wheel", (e) => {',
+          '  e.preventDefault();',
+          '  if (performance.now() < lockedUntil) return;',
+          '  if (currentPage === 2) {',
+          '    const nextVh = targetVh + (e.deltaY / window.innerHeight) * 100;',
+          '    if (nextVh < 200) {',
+          '      targetVh = 200;',
+          '      if ((boundaryAccum += Math.abs(e.deltaY)) >= CONFIG.boundaryThreshold) goToPage(1, false);',
+          '    } else if (nextVh > 400) {',
+          '      targetVh = 400;',
+          '      if ((boundaryAccum += Math.abs(e.deltaY)) >= CONFIG.boundaryThreshold) goToPage(3, false);',
+          '    } else { boundaryAccum = 0; targetVh = nextVh; }',
+          '    return;',
+          '  }',
+          '  wheelAccum += Math.max(-75, Math.min(75, e.deltaY));',
+          '  if (wheelAccum >= CONFIG.wheelThreshold && currentPage < 4) goToPage(currentPage + 1, false);',
+          '  else if (wheelAccum <= -CONFIG.wheelThreshold && currentPage > 0) goToPage(currentPage - 1, currentPage - 1 === 2);',
+          '}, { passive: false });',
+          '',
+          'function animate() {',
+          '  currentVh += (targetVh - currentVh) * (currentPage === 2 ? CONFIG.lerpFactor : 0.11);',
+          '  track.style.transform = `translate3d(0, -${currentVh.toFixed(3)}vh, 0)`;',
+          '  requestAnimationFrame(animate);',
+          '}',
+          'animate();',
+          '<\/script>'
+        ].join('\n');
+      }
+
+      const codeModal = document.getElementById('code-modal');
+      const codeTemplateContent = document.getElementById('code-template-content');
+      const btnCopyCode = document.getElementById('btn-copy-code');
+
+      function openCodeModal() {
+        codeTemplateContent.textContent = buildCleanTemplateCode();
+        codeModal.classList.remove('hidden');
+        codeModal.classList.add('flex');
+      }
+
+      function closeCodeModal() {
+        codeModal.classList.add('hidden');
+        codeModal.classList.remove('flex');
+      }
+
+      document.getElementById('btn-open-code').addEventListener('click', openCodeModal);
+      document.getElementById('btn-open-code-p5').addEventListener('click', openCodeModal);
+      document.getElementById('btn-close-code').addEventListener('click', closeCodeModal);
+
+      btnCopyCode.addEventListener('click', function () {
+        const text = codeTemplateContent.textContent;
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          btnCopyCode.textContent = '已複製到剪貼簿 ✓';
+          setTimeout(function () {
+            btnCopyCode.textContent = '複製程式碼';
+          }, 1800);
+        } catch (err) {
+          btnCopyCode.textContent = '請手動選取複製';
+        }
+        document.body.removeChild(ta);
+      });
+
+      syncParamsUI();
+      updateNavigationUI();
+      requestAnimationFrame(renderLoop);
+    })();
+  </script>
+</body>
+</html>
