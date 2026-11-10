@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>混合滾動模式：第 3 區塊 300vh 平滑滾動 ＋ 其他區塊投影片滑動</title>
+  <style>
+    /* ========== 全域重設與視窗配置 ========== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none; /* 防止快速滾動時反白選取文字 */
+    }
+
+    body, html {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto; /* 允許滾動條正常工作 */
+      scroll-behavior: auto; /* 滾動切換由 JS 統一控制平滑過渡 */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", "Helvetica Neue", sans-serif;
+      color: #ffffff;
+      background-color: #0b0f19;
+    }
+
+    /* 自訂捲軸樣式 */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.35);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    /* ========== 頂部閱讀進度指示條 ========== */
+    .reading-progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 6px;
+      width: 0%;
+      background: linear-gradient(90deg, #60a5fa, #34d399, #fbbf24, #c084fc, #fb7185);
+      z-index: 999;
+      transition: width 0.15s ease-out;
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.8);
+    }
+
+    /* ========== 頂部目前章節指示器 ========== */
+    .top-header-bar {
+      position: fixed;
+      top: 1.5rem;
+      left: 2rem;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 0.6rem 1.4rem;
+      border-radius: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .top-site-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .top-chapter-counter {
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.22);
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+    }
+
+    /* 頂部右側滑動特性標籤 */
+    .top-status-badge {
+      position: fixed;
+      top: 1.5rem;
+      right: 2rem;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 2rem;
+      padding: 0.55rem 1.2rem;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    /* ========== 5 個區塊的外層容器 (Slider Container) ========== */
+    .slider-container {
+      width: 100%;
+      position: relative;
+    }
+
+    /* ========== 區塊通用樣式 ========== */
+    .slide-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 3rem 2rem;
+      position: relative;
+      text-align: center;
+    }
+
+    /* ========== 5 種鮮明且截然不同的背景顏色與高度 ========== */
+    /* 區塊 1：鮮明藍色 (Royal Blue) - 100vh 投影片式滑動 */
+    .section-1 {
+      height: 100vh;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    }
+
+    /* 區塊 2：翠綠森林 (Emerald Green) - 100vh 投影片式滑動 */
+    .section-2 {
+      height: 100vh;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #064e3b 0%, #059669 100%);
+    }
+
+    /* 
+      區塊 3：溫暖琥珀橘 (Amber Orange) - 300vh（依需求為 300vh，內部採一般平滑滾動）
+    */
+    .section-3 {
+      height: 300vh;
+      min-height: 300vh;
+      background: linear-gradient(135deg, #9a3412 0%, #ea580c 50%, #c2410c 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      padding: 5rem 2rem;
+    }
+
+    /* 區塊 4：神祕紫羅蘭 (Deep Purple) - 100vh 投影片式滑動 */
+    .section-4 {
+      height: 100vh;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #581c87 0%, #9333ea 100%);
+    }
+
+    /* 區塊 5：熱情寶石紅 (Crimson Red) - 100vh 投影片式滑動 */
+    .section-5 {
+      height: 100vh;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #881337 0%, #e11d48 100%);
+    }
+
+    /* ========== 區塊內部的文章卡片 ========== */
+    .section-content-card {
+      background: rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 1.75rem;
+      padding: 3.5rem 4rem;
+      max-width: 820px;
+      width: 90%;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+      transition: transform 0.6s ease, opacity 0.6s ease;
+      margin: 2rem 0;
+    }
+
+    /* 顏色標示徽章 */
+    .color-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.45rem 1.2rem;
+      background: rgba(255, 255, 255, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 2rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+    }
+
+    .color-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+    }
+    .swatch-1 { background-color: #2563eb; }
+    .swatch-2 { background-color: #059669; }
+    .swatch-3 { background-color: #ea580c; }
+    .swatch-4 { background-color: #9333ea; }
+    .swatch-5 { background-color: #e11d48; }
+
+    /* 區塊主標題 */
+    .section-title {
+      font-size: 2.85rem;
+      font-weight: 900;
+      line-height: 1.25;
+      margin-bottom: 1.2rem;
+      letter-spacing: -0.02em;
+      text-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 區塊副標題 */
+    .section-subtitle {
+      font-size: 1.25rem;
+      font-weight: 500;
+      opacity: 0.95;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    /* 區塊說明文字 */
+    .section-desc {
+      font-size: 1.05rem;
+      line-height: 1.9;
+      opacity: 0.9;
+      margin-bottom: 2rem;
+      text-align: justify;
+    }
+
+    /* 顏色詳細資訊列 (HEX / RGB) */
+    .color-info-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 2rem;
+      font-size: 0.95rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 0.8rem 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      margin-bottom: 1.8rem;
+    }
+
+    /* 滑動導引提示 */
+    .scroll-guide-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      opacity: 0.8;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      padding-top: 1.25rem;
+    }
+
+    /* ========== 右側 5 個導航圓點列 ========== */
+    .side-nav {
+      position: fixed;
+      right: 2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 1.3rem;
+      z-index: 100;
+    }
+
+    .dot-button {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      outline: none;
+    }
+
+    .dot-circle {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.35);
+      border: 2px solid transparent;
+      transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .dot-button:hover .dot-circle {
+      background: rgba(255, 255, 255, 0.9);
+      transform: scale(1.3);
+    }
+
+    .dot-button.is-active .dot-circle {
+      width: 14px;
+      height: 14px;
+      background: #ffffff;
+      transform: scale(1.4);
+      border-color: rgba(255, 255, 255, 0.6);
+      box-shadow: 0 0 16px rgba(255, 255, 255, 1);
+    }
+
+    /* 圓點滑鼠懸停提示（精確維持原版文字） */
+    .dot-tooltip {
+      position: absolute;
+      right: 34px;
+      background: rgba(0, 0, 0, 0.85);
+      color: #ffffff;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(8px);
+      transition: all 0.25s ease;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .dot-button:hover .dot-tooltip {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* ========== 底部快速切換按鈕 ========== */
+    .bottom-controls {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 1.25rem;
+      z-index: 100;
+    }
+
+    .control-btn {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+      padding: 0.65rem 1.6rem;
+      border-radius: 2rem;
+      cursor: pointer;
+      font-size: 0.925rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: all 0.25s ease;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .control-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    /* ========== 響應式手機調整 ========== */
+    @media (max-width: 768px) {
+      .top-header-bar {
+        left: 1rem;
+        top: 1rem;
+      }
+      .top-status-badge {
+        display: none;
+      }
+      .side-nav {
+        right: 0.75rem;
+      }
+      .section-content-card {
+        padding: 2.2rem 1.6rem;
+      }
+      .section-title {
+        font-size: 2rem;
+      }
+      .section-subtitle {
+        font-size: 1.05rem;
+      }
+      .color-info-bar {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .bottom-controls {
+        bottom: 1.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========== 頂部閱讀滾動進度條 ========== -->
+  <div class="reading-progress-bar" id="readingProgressBar"></div>
+
+  <!-- ========== 頂部目前章節指示器 ========== -->
+  <header class="top-header-bar">
+    <span class="top-site-title">混合滑動模式展示</span>
+    <span class="top-chapter-counter" id="headerCounter">第 1 / 5 區塊 · 寶石藍</span>
+  </header>
+
+  <!-- 滑動模式特性指示 -->
+  <div class="top-status-badge">
+    <span class="status-dot"></span>
+    <span>第 3 區塊 300vh 平滑滾動 · 其餘投影片式</span>
+  </div>
+
+  <!-- ========== 主要外層容器 (Slider Container) ========== -->
+  <main class="slider-container" id="slider">
+
+    <!-- ========== 區塊 1 (100vh 高度)：沉穩寶石藍 ========== -->
+    <div class="slide-section section-1" id="section-1" data-index="0" data-name="寶石藍 (BLUE)">
+      <div class="section-content-card">
+        <div class="color-pill">
+          <span class="color-swatch swatch-1"></span>
+          <span>DIV 01 · 100VH 投影片式滑動</span>
+        </div>
+        <h1 class="section-title">第 1 個區塊：沉穩寶石藍</h1>
+        <h2 class="section-subtitle">「藍色如同一望無際的蔚藍深海，寧靜而深邃。」</h2>
+        <p class="section-desc">
+          本區塊維持 100vh 全螢幕大小，採用投影片式的整頁滑動切換。靈敏度已特別調校至適中門檻（需明確滾動超過 80px），不會因輕微碰觸就誤跳至下一頁。
+        </p>
+        <div class="color-info-bar">
+          <span>模式：投影片式滑動</span>
+          <span>靈敏度：低靈敏度防誤觸</span>
+          <span>高度：100VH</span>
+        </div>
+        <div class="scroll-guide-footer">
+          <span>區塊 1 / 5</span>
+          <span>↓ 明確向下滑動滾輪切換至第 2 區塊</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 區塊 2 (100vh 高度)：翡翠森林綠 ========== -->
+    <div class="slide-section section-2" id="section-2" data-index="1" data-name="翡翠綠 (GREEN)">
+      <div class="section-content-card">
+        <div class="color-pill">
+          <span class="color-swatch swatch-2"></span>
+          <span>DIV 02 · 100VH 投影片式滑動</span>
+        </div>
+        <h2 class="section-title">第 2 個區塊：生機翡翠綠</h2>
+        <h2 class="section-subtitle">「綠色象徵蓊鬱山林與蓬勃生機，清爽而舒暢。」</h2>
+        <p class="section-desc">
+          第二個區塊同為 100vh 投影片切換模式。當你向下滑動進入下一個區塊時，畫面將無縫切入「300vh 琥珀橘區塊」，並自動切換為一般長篇平滑自由滾動！
+        </p>
+        <div class="color-info-bar">
+          <span>模式：投影片式滑動</span>
+          <span>下一區塊：300VH 平滑滾動</span>
+          <span>高度：100VH</span>
+        </div>
+        <div class="scroll-guide-footer">
+          <span>區塊 2 / 5</span>
+          <span>↑ 向上滑動回前頁 ｜ ↓ 向下滑動進入第 3 區塊</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 區塊 3 (300vh 高度)：溫暖琥珀橘 (此區塊內為一般平滑滾動) ========== -->
+    <div class="slide-section section-3" id="section-3" data-index="2" data-name="琥珀橘 (ORANGE · 300VH)">
+      
+      <!-- 300vh 內容卡片 1：平滑滾動起點 -->
+      <div class="section-content-card">
+        <div class="color-pill">
+          <span class="color-swatch swatch-3"></span>
+          <span>DIV 03 · 300VH 平滑滾動區 (起點)</span>
+        </div>
+        <h2 class="section-title">第 3 個區塊：溫暖琥珀橘</h2>
+        <h2 class="section-subtitle">「本區塊高度為 300vh，內部可隨意自由平滑滾動」</h2>
+        <p class="section-desc">
+          依你的指定：只有這個第三區塊改為「300vh」與「平滑滾動」。在這個橘色區塊內部滾動時，手感完全是一般網頁的自然平滑捲動，你可以隨意微調滾輪滾動瀏覽！
+        </p>
+        <div class="color-info-bar">
+          <span>模式：一般平滑滾動 (300vh)</span>
+          <span>手感：自由平順捲動</span>
+          <span>高度：300VH (3倍螢幕深度)</span>
+        </div>
+        <div class="scroll-guide-footer">
+          <span>區塊 3 (起點頂端)</span>
+          <span>↓ 自由向下滾動瀏覽中段內容</span>
+        </div>
+      </div>
+
+      <!-- 300vh 內容卡片 2：平滑滾動中段 -->
+      <div class="section-content-card">
+        <div class="color-pill">
+          <span class="color-swatch swatch-3"></span>
+          <span>DIV 03 · 300VH 平滑滾動區 (中段)</span>
+        </div>
+        <h3 class="section-title">琥珀橘 300vh 深度漫遊</h3>
+        <h2 class="section-subtitle">「此處為 300vh 的核心腹地，隨意上下滑動不受投影片限制」</h2>
+        <p class="section-desc">
+          你在這裡可以自由地往上滾、往下滾，就像閱讀一般長篇專題報導。直到滾動至這個 300vh 區塊的「最底端」時，再次明確向下滑動才會觸發投影片滑動切換至第 4 區塊。
+        </p>
+        <div class="color-info-bar">
+          <span>位置：300vh 中腹</span>
+          <span>滾動方式：流暢自然</span>
+          <span>狀態：自由閱讀中</span>
+        </div>
+        <div class="scroll-guide-footer">
+          <span>區塊 3 (深度中段)</span>
+          <span>↓ 繼續向下滾動至本區塊底部</span>
+        </div>
+      </div>
+
+      <!-- 300vh 內容卡片 3：平滑滾動尾聲 -->
+      <div class="section-content-card">
+        <div class="color-pill">
+          <span class="color-swatch swatch-3"></span>
+          <span>DIV 03 · 300VH 平滑滾動區 (底端)</span>
+        </div>
+        <h3 class="section-title">300vh 區塊即將結束</h3>
+        <h2 class="section-subtitle">「抵達 300vh 最底端，即將銜接回投影片滑動」</h2>
+        <p class="section-desc">
+          你已經閱讀完 300vh 的長篇平滑內容。現在若再明確向下滑動一次，就會透過投影片式的平滑滑動進入第 4 個紫色全螢幕區塊。
+        </p>
+        <div class="color-info-bar">
+          <span>位置：300vh 最底部</span>
+          <span>下一區塊：神祕紫 (100vh 投影片式)</span>
+          <span>切換判定：需明確向下滑動觸發</span>
+        </div>
+        <div class="scroll-guide-footer">
+          <span>區塊 3 (底端)</span>
+          <span>↓ 明確向下滑動切換至第 4 區塊</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========== 區塊 4 (100vh 高度)：神祕幽深紫 ========== -->
+    <div class="slide-section section-4" id="section-4" data-index="3" data-name="神祕紫 (PURPLE)">
+      <div class="section-content-card">
+        <div class="color-pill">
+          <span class="color-swatch swatch-4"></span>
+          <span>DIV 04 · 100VH 投影片式滑動</span>
+        </div>
+        <h2 class="section-title">第 4 個區塊：神祕幽深紫</h2>
+        <h2 class="section-subtitle">「紫色宛若夜空中綻放的瑰麗星雲，高雅而神祕。」</h2>
+        <p class="section-desc">
+          本區塊恢復為 100vh 全螢幕的投影片式切換。向上滑動會滑回 300vh 琥珀橘區塊的底部；向下滑動則滑向最後的紅色區塊。
+        </p>
+        <div class="color-info-bar">
+          <span>模式：投影片式滑動</span>
+          <span>高度：100VH</span>
+          <span>靈敏度：低靈敏度防誤觸</span>
+        </div>
+        <div class="scroll-guide-footer">
+          <span>區塊 4 / 5</span>
+          <span>↑ 向上切換回第 3 區塊 ｜ ↓ 向下切換至第 5 區塊</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 區塊 5 (100vh 高度)：熱情寶石紅 ========== -->
+    <div class="slide-section section-5" id="section-5" data-index="4" data-name="熱情紅 (RED)">
+      <div class="section-content-card">
+        <div class="color-pill">
+          <span class="color-swatch swatch-5"></span>
+          <span>DIV 05 · 100VH 投影片式滑動</span>
+        </div>
+        <h2 class="section-title">第 5 個區塊：熱情寶石紅</h2>
+        <h2 class="section-subtitle">「紅色如同燃燒的熾熱烈火，熾烈而堅定地為篇章收尾。」</h2>
+        <p class="section-desc">
+          這是最後一個 100vh 全螢幕區塊。完全符合你的要求：只有第 3 個區塊為 300vh 且支援平滑滾動，其餘區塊均為 100vh 且採用適中靈敏度的投影片式滑動。
+        </p>
+        <div class="color-info-bar">
+          <span>模式：投影片式滑動</span>
+          <span>高度：100VH</span>
+          <span>狀態：完篇</span>
+        </div>
+        <div class="scroll-guide-footer">
+          <span>區塊 5 / 5 (完結)</span>
+          <span>↑ 向上滑動可返回第 4 區塊</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========== 右側 5 個圓點導航列 ========== -->
+  <nav class="side-nav" aria-label="章節跳轉導航" id="pagination">
+    <button class="dot-button is-active" data-index="0" aria-label="跳轉到第 1 篇：蔚藍海洋">
+      <span class="dot-tooltip">01 蔚藍海洋</span>
+      <span class="dot-circle"></span>
+    </button>
+    <button class="dot-button" data-index="1" aria-label="跳轉到第 2 篇：翡翠森林">
+      <span class="dot-tooltip">02 翡翠森林</span>
+      <span class="dot-circle"></span>
+    </button>
+    <button class="dot-button" data-index="2" aria-label="跳轉到第 3 篇：夕陽暖橘">
+      <span class="dot-tooltip">03 夕陽暖橘</span>
+      <span class="dot-circle"></span>
+    </button>
+    <button class="dot-button" data-index="3" aria-label="跳轉到第 4 篇：暗夜幽紫">
+      <span class="dot-tooltip">04 暗夜幽紫</span>
+      <span class="dot-circle"></span>
+    </button>
+    <button class="dot-button" data-index="4" aria-label="跳轉到第 5 篇：沉穩石墨">
+      <span class="dot-tooltip">05 沉穩石墨</span>
+      <span class="dot-circle"></span>
+    </button>
+  </nav>
+
+  <!-- ========== 底部輔助上下鍵按鈕 ========== -->
+  <div class="bottom-controls">
+    <button class="control-btn" id="prevBtn" disabled aria-label="上一頁">
+      <span>▲</span> 上一頁
+    </button>
+    <button class="control-btn" id="nextBtn" aria-label="下一頁">
+      下一頁 <span>▼</span>
+    </button>
+  </div>
+
+  <!-- ========== 核心 JavaScript：混合滑動切換控制 ========== -->
+  <script>
+    // 取得主要 DOM 節點
+    const sections = document.querySelectorAll('.slide-section');
+    const dotButtons = document.querySelectorAll('.dot-button');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const progressBar = document.getElementById('readingProgressBar');
+    const headerCounter = document.getElementById('headerCounter');
+
+    const totalSections = sections.length;
+    let currentSectionIndex = 0;
+    let isTransitioning = false;  // 投影片切換中鎖定，避免連續觸發跳頁
+    let accumulatedDelta = 0;    // 滾輪位移累積量（降低靈敏度關鍵）
+    let deltaResetTimer = null;  // 閒置清除計時器
+
+    // ========== 靈敏度與切換參數 ==========
+    // 投影片觸發門檻設定為 85px，必須有意識地明確滾動才會換頁，防止微碰誤觸
+    const slideThreshold = 85;
+    // 投影片切換滑行時間設定為 950ms，具備平穩舒適的轉場視覺
+    const slideDuration = 950;
+
+    /**
+     * 緩動函數 (easeInOutCubic)
+     */
+    function easeInOutCubic(t) {
+      return t < 0.5 
+        ? 4 * t * t * t 
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    /**
+     * 計算每個區塊在頁面上的頂端 Y 座標與底部 Y 座標
+     */
+    function getSectionOffsets() {
+      return Array.from(sections).map((sec) => ({
+        top: sec.offsetTop,
+        bottom: sec.offsetTop + sec.offsetHeight,
+        height: sec.offsetHeight
+      }));
+    }
+
+    /**
+     * 投影片平滑滑動至目標 Y 座標
+     * @param {number} targetY - 目標滾動位置
+     * @param {function} onComplete - 完成回呼
+     */
+    function slideScrollTo(targetY, onComplete) {
+      isTransitioning = true;
+      const startY = window.scrollY || window.pageYOffset;
+      const distance = targetY - startY;
+      let startTime = null;
+
+      function step(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / slideDuration, 1);
+        const eased = easeInOutCubic(progress);
+
+        window.scrollTo(0, startY + (distance * eased));
+        updateProgressBar();
+
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        } else {
+          window.scrollTo(0, targetY);
+          updateProgressBar();
+          setTimeout(() => {
+            isTransitioning = false;
+            accumulatedDelta = 0;
+            if (onComplete) onComplete();
+          }, 200);
+        }
+      }
+
+      window.requestAnimationFrame(step);
+    }
+
+    /**
+     * 切換至指定區塊
+     * @param {number} index - 目標區塊索引 (0 ~ 4)
+     * @param {string} position - 'top' (停在區塊頂端) 或 'bottom' (停在區塊底部)
+     */
+    function goToSection(index, position = 'top') {
+      if (index < 0 || index >= totalSections) return;
+      if (isTransitioning) return;
+
+      const offsets = getSectionOffsets();
+      let targetY = offsets[index].top;
+
+      // 若目標為第 3 區塊且要求停在底部，則滑到第 3 區塊最底可見視角
+      if (position === 'bottom') {
+        targetY = offsets[index].bottom - window.innerHeight;
+      }
+
+      slideScrollTo(targetY, () => {
+        updateActiveUI(index);
+      });
+    }
+
+    /**
+     * 更新當前作用中區塊的 UI（頂部標籤、圓點、按鈕）
+     */
+    function updateActiveUI(index) {
+      currentSectionIndex = index;
+
+      // 更新頂部標題文字
+      const sectionName = sections[index].getAttribute('data-name');
+      headerCounter.textContent = `第 ${index + 1} / ${totalSections} 區塊 · ${sectionName}`;
+
+      // 更新右側圓點
+      dotButtons.forEach((btn, i) => {
+        if (i === index) {
+          btn.classList.add('is-active');
+        } else {
+          btn.classList.remove('is-active');
+        }
+      });
+
+      // 更新按鈕啟用/禁用
+      prevBtn.disabled = (index === 0);
+      nextBtn.disabled = (index === totalSections - 1);
+    }
+
+    /**
+     * 即時更新頂部進度條
+     */
+    function updateProgressBar() {
+      const scrollTop = window.scrollY || window.pageYOffset;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (scrollHeight > 0) {
+        const pct = Math.min(Math.max((scrollTop / scrollHeight) * 100, 0), 100);
+        progressBar.style.width = `${pct}%`;
+      }
+    }
+    window.addEventListener('scroll', updateProgressBar, { passive: true });
+
+    /* ========== 核心滾動判斷邏輯（混合模式） ========== */
+    window.addEventListener('wheel', (e) => {
+      // 投影片轉場進行中時，阻止任何滾動
+      if (isTransitioning) {
+        e.preventDefault();
+        return;
+      }
+
+      const currentY = window.scrollY || window.pageYOffset;
+      const offsets = getSectionOffsets();
+      const sec3 = offsets[2]; // 第 3 區塊 (300vh)
+      const sec3Top = sec3.top;
+      const sec3BottomView = sec3.bottom - window.innerHeight;
+
+      // 判斷目前是否位於第 3 區塊的 300vh 內部
+      const isInsideSec3 = (currentY >= sec3Top - 2 && currentY <= sec3BottomView + 2);
+
+      if (isInsideSec3) {
+        // ========== 情況 A：在第 3 區塊內部 ==========
+        // 1. 向下滾動
+        if (e.deltaY > 0) {
+          // 若尚未到達第 3 區塊最底部：允許原生一般平滑滾動！
+          if (currentY < sec3BottomView - 5) {
+            return; // 不阻擋，放行正常自由平滑滾動
+          }
+          // 若已經到達第 3 區塊最底部：阻擋原生滾動，累積門檻後投影片切換到第 4 區塊
+          e.preventDefault();
+          accumulatedDelta += e.deltaY;
+          resetAccumulatedTimer();
+
+          if (accumulatedDelta >= slideThreshold) {
+            accumulatedDelta = 0;
+            goToSection(3, 'top'); // 投影片滑至第 4 區塊
+          }
+        } 
+        // 2. 向上滾動
+        else if (e.deltaY < 0) {
+          // 若尚未到達第 3 區塊最頂部：允許原生一般平滑滾動！
+          if (currentY > sec3Top + 5) {
+            return; // 不阻擋，放行正常自由平滑滾動
+          }
+          // 若已經到達第 3 區塊最頂部：阻擋原生滾動，累積門檻後投影片切換到第 2 區塊
+          e.preventDefault();
+          accumulatedDelta += e.deltaY;
+          resetAccumulatedTimer();
+
+          if (accumulatedDelta <= -slideThreshold) {
+            accumulatedDelta = 0;
+            goToSection(1, 'top'); // 投影片滑回第 2 區塊
+          }
+        }
+      } 
+      else {
+        // ========== 情況 B：在第 1、2、4、5 區塊（投影片式切換） ==========
+        // 阻止預設直接滑動，強制採用低靈敏度的投影片切換
+        e.preventDefault();
+        accumulatedDelta += e.deltaY;
+        resetAccumulatedTimer();
+
+        // 向下滾動累積達門檻
+        if (accumulatedDelta >= slideThreshold) {
+          accumulatedDelta = 0;
+          if (currentSectionIndex === 0) {
+            goToSection(1, 'top'); // 1 -> 2
+          } else if (currentSectionIndex === 1) {
+            goToSection(2, 'top'); // 2 -> 3 (進入 300vh 頂部)
+          } else if (currentSectionIndex === 3) {
+            goToSection(4, 'top'); // 4 -> 5
+          }
+        } 
+        // 向上滾動累積達門檻
+        else if (accumulatedDelta <= -slideThreshold) {
+          accumulatedDelta = 0;
+          if (currentSectionIndex === 1) {
+            goToSection(0, 'top'); // 2 -> 1
+          } else if (currentSectionIndex === 3) {
+            goToSection(2, 'bottom'); // 4 -> 回到 3 的最底部！
+          } else if (currentSectionIndex === 4) {
+            goToSection(3, 'top'); // 5 -> 4
+          }
+        }
+      }
+    }, { passive: false });
+
+    // 重設累積量計時器（300ms 內未達到門檻視為無意輕觸，清空累積量）
+    function resetAccumulatedTimer() {
+      clearTimeout(deltaResetTimer);
+      deltaResetTimer = setTimeout(() => {
+        accumulatedDelta = 0;
+      }, 300);
+    }
+
+    /* ========== 觸控手勢支援 ========== */
+    let touchStartY = 0;
+    const touchThreshold = 75;
+
+    window.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      if (isTransitioning) return;
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffY = touchStartY - touchEndY;
+
+      const currentY = window.scrollY || window.pageYOffset;
+      const offsets = getSectionOffsets();
+      const sec3 = offsets[2];
+      const isInsideSec3 = (currentY >= sec3.top - 2 && currentY <= sec3.bottom - window.innerHeight + 2);
+
+      if (!isInsideSec3) {
+        if (diffY > touchThreshold) {
+          // 向上滑動手勢 -> 下一頁
+          if (currentSectionIndex === 0) goToSection(1);
+          else if (currentSectionIndex === 1) goToSection(2, 'top');
+          else if (currentSectionIndex === 3) goToSection(4);
+        } else if (diffY < -touchThreshold) {
+          // 向下滑動手勢 -> 上一頁
+          if (currentSectionIndex === 1) goToSection(0);
+          else if (currentSectionIndex === 3) goToSection(2, 'bottom');
+          else if (currentSectionIndex === 4) goToSection(3);
+        }
+      } else {
+        // 在第 3 區塊邊界處的觸控切換
+        if (diffY > touchThreshold && currentY >= sec3.bottom - window.innerHeight - 5) {
+          goToSection(3, 'top');
+        } else if (diffY < -touchThreshold && currentY <= sec3.top + 5) {
+          goToSection(1, 'top');
+        }
+      }
+    }, { passive: true });
+
+    /* ========== 鍵盤導航支援 ========== */
+    window.addEventListener('keydown', (e) => {
+      if (e.altKey || e.ctrlKey || e.metaKey || isTransitioning) return;
+
+      const currentY = window.scrollY || window.pageYOffset;
+      const offsets = getSectionOffsets();
+      const sec3 = offsets[2];
+      const isInsideSec3 = (currentY > sec3.top + 10 && currentY < sec3.bottom - window.innerHeight - 10);
+
+      // 在第 3 區塊內部時，放行原生上下鍵捲動
+      if (isInsideSec3) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault();
+        if (currentSectionIndex === 0) goToSection(1);
+        else if (currentSectionIndex === 1) goToSection(2, 'top');
+        else if (currentSectionIndex === 2) goToSection(3, 'top');
+        else if (currentSectionIndex === 3) goToSection(4);
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        if (currentSectionIndex === 1) goToSection(0);
+        else if (currentSectionIndex === 2) goToSection(1);
+        else if (currentSectionIndex === 3) goToSection(2, 'bottom');
+        else if (currentSectionIndex === 4) goToSection(3);
+      }
+    });
+
+    /* ========== 滾動位置自動同步更新當前作用中區塊 ========== */
+    window.addEventListener('scroll', () => {
+      if (isTransitioning) return;
+      const currentY = window.scrollY || window.pageYOffset;
+      const offsets = getSectionOffsets();
+
+      offsets.forEach((off, idx) => {
+        if (currentY >= off.top - 100 && currentY < off.bottom - 100) {
+          if (currentSectionIndex !== idx) {
+            updateActiveUI(idx);
+          }
+        }
+      });
+    }, { passive: true });
+
+    /* ========== 側邊圓點點擊事件 ========== */
+    dotButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const index = parseInt(btn.getAttribute('data-index'), 10);
+        goToSection(index, 'top');
+      });
+    });
+
+    /* ========== 底部切換按鈕點擊事件 ========== */
+    prevBtn.addEventListener('click', () => {
+      if (currentSectionIndex === 3) {
+        goToSection(2, 'bottom');
+      } else if (currentSectionIndex > 0) {
+        goToSection(currentSectionIndex - 1, 'top');
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentSectionIndex < totalSections - 1) {
+        goToSection(currentSectionIndex + 1, 'top');
+      }
+    });
+
+    // 初始化
+    updateActiveUI(0);
+    updateProgressBar();
+  </script>
+</body>
+</html>
